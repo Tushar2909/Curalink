@@ -30,7 +30,6 @@ styleTag.innerHTML = `
 document.head.appendChild(styleTag);
 
 // 🌐 AUTO-DETECT BACKEND URL
-// Replace the URL below with your actual Render URL after deployment
 const BACKEND_URL = process.env.NODE_ENV === 'production' 
   ? "https://curalink-3h2f.onrender.com" 
   : "http://localhost:5000";
@@ -43,6 +42,11 @@ function App() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState("");
+
+  // Update Page Title
+  useEffect(() => {
+    document.title = "CuraLink AI | Medical Research";
+  }, []);
 
   const diseasesList = [
     { label: "Alzheimer's Disease", value: "alzheimer's disease" },
@@ -184,7 +188,6 @@ function App() {
 
         {data && (
           <div style={styles.results}>
-            {/* AI MAIN INSIGHTS */}
             <div style={styles.section} className="hover-card">
               <div style={styles.flexHeader}>
                 <h2 style={styles.sectionTitle}>🤖 AI Intelligence Synthesis</h2>
@@ -194,7 +197,6 @@ function App() {
             </div>
 
             <div style={styles.bentoGrid}>
-              {/* PUBLICATIONS */}
               <div style={{...styles.section, flex: 1.8}} className="hover-card">
                 <h2 style={styles.sectionTitle}>📚 Scientific Evidence (2024-2026)</h2>
                 <div style={styles.scrollArea}>
@@ -210,7 +212,6 @@ function App() {
                 </div>
               </div>
 
-              {/* TRIALS */}
               <div style={{...styles.section, flex: 1}} className="hover-card">
                 <h2 style={styles.sectionTitle}>🧪 Clinical Trials</h2>
                 <div style={styles.scrollArea}>
@@ -281,7 +282,7 @@ const styles = {
     fontWeight: '900',
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
-    backgroundColor: status?.includes('RECRUITING') ? '#dcfce7' : '#166534',
+    backgroundColor: status?.includes('RECRUITING') ? '#dcfce7' : '#fef9c3',
     color: status?.includes('RECRUITING') ? '#166534' : '#1e293b',
     margin: '10px 0'
   }),
