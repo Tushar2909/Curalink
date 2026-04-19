@@ -126,16 +126,18 @@ function App() {
     try {
       setLoading(true);
       setData(null);
+      // 🛠️ CRITICAL FIX: Added 90s timeout for Render Free Tier stability
       const res = await axios.post(`${BACKEND_URL}/api/search`, {
         patientName: patientName || "User",
         location: location || "Global",
         disease: selectedDisease,
         query
-      });
+      }, { timeout: 90000 }); 
+      
       setData(res.data);
     } catch (err) {
       console.error(err);
-      alert("Note: Free-tier servers may take 60s to wake up on the first request. Please try again in a moment.");
+      alert("Note: Server is warming up. Please wait 10 seconds and click search again!");
     } finally {
       setLoading(false);
     }
@@ -193,7 +195,7 @@ function App() {
                 <h2 style={styles.sectionTitle}>🤖 AI Intelligence Synthesis</h2>
                 <button onClick={copyToClipboard} style={styles.copyBtn}>Copy Report</button>
               </div>
-              <div style={styles.answer}>{data.answer}</div>
+              <div style={styles.answer}>{data.answer || "Agent is processing... please try once more."}</div>
             </div>
 
             <div style={styles.bentoGrid}>
@@ -237,56 +239,30 @@ function App() {
 }
 
 const styles = {
-  container: { 
-    fontFamily: "'Inter', system-ui, -apple-system, sans-serif", 
-    backgroundColor: "#f8fafc", 
-    minHeight: "100vh",
-    color: "#0f172a",
-    padding: "20px"
-  },
+  container: { fontFamily: "'Inter', system-ui, -apple-system, sans-serif", backgroundColor: "#f8fafc", minHeight: "100vh", color: "#0f172a", padding: "20px" },
   title: { textAlign: 'center', fontSize: '3rem', fontWeight: '900', color: '#1e40af', marginBottom: '5px', letterSpacing: '-1.5px' },
   subtitle: { textAlign: 'center', color: '#64748b', marginBottom: '40px', fontSize: '1.1rem', fontWeight: '500' },
-  card: { 
-    maxWidth: '750px', 
-    margin: '0 auto 50px auto', 
-    background: 'rgba(255, 255, 255, 0.95)', 
-    backdropFilter: 'blur(16px)',
-    padding: '45px', 
-    borderRadius: '28px', 
-    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.08)',
-    border: '1px solid #e2e8f0'
-  },
+  card: { maxWidth: '750px', margin: '0 auto 50px auto', background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(16px)', padding: '45px', borderRadius: '28px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.08)', border: '1px solid #e2e8f0' },
   inputGroup: { display: 'flex', gap: '15px', marginBottom: '20px' },
-  input: { flex: 1, padding: '16px', borderRadius: '14px', border: '1px solid #cbd5e1', fontSize: '16px', backgroundColor: '#fff', outline: 'none', transition: 'border 0.2s' },
-  button: { width: '100%', padding: '18px', color: '#fff', border: 'none', borderRadius: '14px', cursor: 'pointer', fontSize: '18px', fontWeight: '800', transition: '0.4s cubic-bezier(0.4, 0, 0.2, 1)' },
+  input: { flex: 1, padding: '16px', borderRadius: '14px', border: '1px solid #cbd5e1', fontSize: '16px', backgroundColor: '#fff', outline: 'none' },
+  button: { width: '100%', padding: '18px', color: '#fff', border: 'none', borderRadius: '14px', cursor: 'pointer', fontSize: '18px', fontWeight: '800' },
   loading: { textAlign: 'center', marginTop: '30px', fontSize: '1.3rem' },
   results: { maxWidth: '1200px', margin: '0 auto', paddingBottom: '80px' },
   bentoGrid: { display: 'flex', gap: '25px', flexWrap: 'wrap' },
-  section: { background: '#fff', padding: '35px', borderRadius: '28px', marginBottom: '25px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)' },
+  section: { background: '#fff', padding: '35px', borderRadius: '28px', marginBottom: '25px', border: '1px solid #e2e8f0' },
   flexHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' },
   sectionTitle: { fontSize: '1.35rem', color: '#0f172a', borderLeft: '5px solid #2563eb', paddingLeft: '18px', fontWeight: '800', margin: 0 },
-  copyBtn: { padding: '8px 16px', borderRadius: '10px', background: '#f1f5f9', border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: '13px', fontWeight: '700', color: '#475569', transition: '0.2s' },
+  copyBtn: { padding: '8px 16px', borderRadius: '10px', background: '#f1f5f9', border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: '13px', fontWeight: '700' },
   answer: { whiteSpace: 'pre-wrap', lineHeight: '2', color: '#334155', fontSize: '16.5px' },
   scrollArea: { maxHeight: '600px', overflowY: 'auto', paddingRight: '10px' },
   listItem: { padding: '22px 0', borderBottom: '1px solid #f1f5f9' },
-  itemTitle: { fontWeight: '750', fontSize: '17.5px', color: '#1e293b', marginBottom: '12px', lineHeight: '1.4' },
+  itemTitle: { fontWeight: '750', fontSize: '17.5px', color: '#1e293b' },
   itemMeta: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   badge: { fontSize: '12px', background: '#eff6ff', padding: '6px 14px', borderRadius: '20px', color: '#1e40af', fontWeight: '700' },
-  link: { color: '#2563eb', textDecoration: 'none', fontWeight: '800', fontSize: '14px' },
+  link: { color: '#2563eb', textDecoration: 'none', fontWeight: '800' },
   trialCard: { padding: '22px', border: '1px solid #fed7aa', backgroundColor: '#fffaf5', marginBottom: '20px', borderRadius: '20px' },
-  statusBadge: (status) => ({
-    display: 'inline-block',
-    padding: '5px 14px',
-    borderRadius: '20px',
-    fontSize: '11px',
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-    backgroundColor: status?.includes('RECRUITING') ? '#dcfce7' : '#fef9c3',
-    color: status?.includes('RECRUITING') ? '#166534' : '#1e293b',
-    margin: '10px 0'
-  }),
-  footer: { textAlign: 'center', marginTop: '60px', color: '#94a3b8', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1.5px' }
+  statusBadge: (status) => ({ display: 'inline-block', padding: '5px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: '900', backgroundColor: status?.includes('RECRUITING') ? '#dcfce7' : '#fef9c3', color: status?.includes('RECRUITING') ? '#166534' : '#1e293b' }),
+  footer: { textAlign: 'center', marginTop: '60px', color: '#94a3b8', fontSize: '13px', fontWeight: '700' }
 };
 
 export default App;
