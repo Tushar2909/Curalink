@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+
 const { expandQuery } = require("../utils/queryExpansion");
 const { fetchOpenAlex } = require("../services/openAlex");
 const { fetchPubMed } = require("../services/pubmed");
@@ -11,27 +12,34 @@ router.post("/search", async (req, res) => {
   try {
     const { disease, query, patientName, location } = req.body;
 
-    if (!disease || !query) return res.status(400).json({ error: "Input required" });
+    if (!disease || !query) {
+      return res.status(400).json({ error: "Disease and query are required." });
+    }
 
     const expandedQuery = expandQuery({ disease, query });
 
-    // 📡 Parallel Retrieval
     const [openAlexRaw, pubMedRaw, trialsRaw] = await Promise.all([
-      fetchOpenAlex(expandedQuery, 30).catch(() => []),
-      fetchPubMed(expandedQuery, 30).catch(() => []),
-      fetchTrials(disease).catch(() => [])
+      fetchOpenAlex(expandedQuery, 30).catch((err) => {
+        console.error("OpenAlex fetch failed:", err.message);
+        return [];
+      }),
+      fetchPubMed(expandedQuery, 30).catch((err) => {
+        console.error("PubMed fetch failed:", err.message);
+        return [];
+      }),
+      fetchTrials(disease).catch((err) => {
+        console.error("ClinicalTrials fetch failed:", err.message);
+        return [];
+      })
     ]);
 
-    // 🧠 Intelligent Ranking
     const allPubs = [...openAlexRaw, ...pubMedRaw];
     const topPublications = rankResults(allPubs, query, disease).slice(0, 7);
-    const topTrials = trialsRaw.slice(0, 5);
+    const topTrials = (trialsRaw || []).slice(0, 5);
 
-    // 🤖 FAULT-TOLERANT AI GENERATION
     let answer = "";
+
     try {
-      // We give the AI a 45-second "racing" limit. 
-      // If it takes longer, we move on with the raw data.
       answer = await Promise.race([
         generateAnswer({
           patientName,
@@ -41,25 +49,33 @@ router.post("/search", async (req, res) => {
           publications: topPublications,
           trials: topTrials
         }),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("Timeout")), 45000)
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("AI timeout after 45 seconds")), 45000)
         )
       ]);
     } catch (aiErr) {
-      console.error("⚠️ AI Generation Slow or Offline:", aiErr.message);
+      console.error("⚠️ AI generation failed or timed out:", aiErr.message);
       answer = "The reasoning engine is offline. Please review the raw data sources below.";
     }
 
-    res.json({
+    return res.json({
       answer,
       publications: topPublications,
       trials: topTrials,
-      queryInfo: { expandedQuery, poolSize: allPubs.length }
+      queryInfo: {
+        expandedQuery,
+        poolSize: allPubs.length,
+        openAlexCount: openAlexRaw.length,
+        pubMedCount: pubMedRaw.length,
+        trialsCount: trialsRaw.length
+      }
     });
-
   } catch (err) {
-    console.error("🔥 Pipeline Crash:", err);
-    res.status(500).json({ error: "Internal Pipeline Error" });
+    console.error("🔥 Pipeline crash:", err);
+    return res.status(500).json({
+      error: "Internal Pipeline Error",
+      details: err.message
+    });
   }
 });
 

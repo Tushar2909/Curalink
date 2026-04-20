@@ -1,50 +1,96 @@
 const Groq = require("groq-sdk");
-require('dotenv').config(); 
+require("dotenv").config();
 
-async function generateAnswer({ patientName, disease, query, location, publications, trials }) {
+async function generateAnswer({
+  patientName,
+  disease,
+  query,
+  location,
+  publications,
+  trials
+}) {
   try {
-    // 🛡️ Safety Check: If Key is missing, don't crash, just log and return
     if (!process.env.GROQ_API_KEY) {
-      console.error("🔥 GROQ_API_KEY is missing in Environment Variables!");
-      return "The reasoning engine is offline due to a configuration sync. Please review the raw data sources below.";
+      console.error("🔥 GROQ_API_KEY is missing in environment variables.");
+      return "The reasoning engine is offline due to a configuration issue. Please review the raw data sources below.";
     }
 
-    const groq = new Groq({ 
-      apiKey: process.env.GROQ_API_KEY 
+    const groq = new Groq({
+      apiKey: process.env.GROQ_API_KEY
     });
 
     if (!publications || publications.length === 0) {
       return "CuraLink retrieved clinical trials but requires more publication data for a full synthesis.";
     }
 
-    // Narrowing the context for ultra-fast response on free tier
-    const paperContext = publications.slice(0, 3).map(p => `(${p.year}) ${p.title}`).join(" | ");
-    const trialContext = trials.slice(0, 2).map(t => `${t.title}`).join(" | ");
+    const paperContext = publications
+      .slice(0, 5)
+      .map((p, i) => {
+        return `${i + 1}. (${p.year || "N/A"}) ${p.title || "Untitled"} | ${p.source || "Unknown source"}`;
+      })
+      .join("\n");
+
+    const trialContext = (trials || [])
+      .slice(0, 3)
+      .map((t, i) => {
+        return `${i + 1}. ${t.title || "Untitled trial"} | ${t.status || "Unknown status"} | ${t.location || "Location not listed"}`;
+      })
+      .join("\n");
 
     const prompt = `
-### IDENTITY: Curalink Medical Synthesis Agent.
-### CONTEXT: ${disease} research for ${patientName || "User"}.
-### DATA: 
-Papers: ${paperContext}
-Trials: ${trialContext}
+You are CuraLink AI, a medical research synthesis assistant.
 
-### TASK:
-1. Synthesize 2025-2026 trends for ${query}.
-2. Use "Evidence suggests". NO medical advice or diagnosis.
-3. Keep it professional and under 150 words.
-4. End with: "This synthesis is for informational purposes and is not medical advice."
+Patient Name: ${patientName || "User"}
+Disease: ${disease || "Not specified"}
+Research Objective: ${query || "General medical research"}
+Location: ${location || "Not specified"}
+
+Publications:
+${paperContext || "No publications available"}
+
+Clinical Trials:
+${trialContext || "No clinical trials available"}
+
+Instructions:
+- Write a concise evidence synthesis in under 180 words.
+- Focus on recent and relevant research trends.
+- Use cautious language like "Evidence suggests" or "Recent studies indicate".
+- Do not provide diagnosis or treatment advice.
+- Mention if trial activity appears limited or early-stage.
+- End with exactly:
+"This synthesis is for informational purposes and is not medical advice."
 `;
 
     const response = await groq.chat.completions.create({
-      messages: [{ role: "user", content: prompt }],
-      model: "mixtral-8x7b-32768", 
-      temperature: 0.1, 
-      max_tokens: 500,
+      model: "mixtral-8x7b-32768",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a careful medical evidence synthesis assistant. You summarize only provided evidence, avoid hallucinations, and never give direct medical advice."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.2,
+      max_tokens: 400
     });
 
-    return response.choices[0]?.message?.content?.trim() || "Synthesis failed.";
+    const content = response?.choices?.[0]?.message?.content?.trim();
+
+    if (!content) {
+      console.error("🔥 Groq returned an empty response:", JSON.stringify(response, null, 2));
+      return "The reasoning engine is offline. Please review the raw data sources below.";
+    }
+
+    return content;
   } catch (err) {
-    console.error("🔥 GROQ SYSTEM ERROR:", err.message);
+    console.error(
+      "🔥 GROQ SYSTEM ERROR:",
+      err?.response?.error || err?.response?.data || err.message || err
+    );
     return "The reasoning engine is offline. Please review the raw data sources below.";
   }
 }
