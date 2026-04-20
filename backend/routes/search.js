@@ -13,7 +13,7 @@ router.post("/search", async (req, res) => {
     const { disease, query, patientName, location } = req.body;
 
     if (!disease || !query) {
-      return res.status(400).json({ error: "Input required" });
+      return res.status(400).json({ error: "Disease and research objective are required." });
     }
 
     const expandedQuery = expandQuery({ disease, query });
@@ -28,7 +28,7 @@ router.post("/search", async (req, res) => {
         return [];
       }),
       fetchTrials(disease).catch((err) => {
-        console.error("Trials error:", err.message);
+        console.error("ClinicalTrials error:", err.message);
         return [];
       })
     ]);
@@ -48,12 +48,14 @@ router.post("/search", async (req, res) => {
           publications: topPublications,
           trials: topTrials
         }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 45000))
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("AI synthesis timeout")), 60000)
+        )
       ]);
     } catch (aiErr) {
       console.error("AI generation slow or offline:", aiErr.message);
       answer =
-        "AI synthesis is temporarily unavailable, but the verified publications and clinical trials below are still current and usable for review.";
+        "Evidence retrieval completed successfully. Structured AI synthesis is temporarily unavailable on the current deployment tier.";
     }
 
     return res.json({

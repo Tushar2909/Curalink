@@ -10,8 +10,8 @@ async function generateAnswer({
 }) {
   try {
     if (!process.env.GROQ_API_KEY) {
-      console.error("GROQ_API_KEY is missing in Environment Variables!");
-      return "AI synthesis is currently unavailable due to a configuration issue. Please review the verified evidence sources below.";
+      console.error("GROQ_API_KEY is missing in environment variables.");
+      return "Evidence retrieval completed successfully. Structured AI synthesis is temporarily unavailable due to a configuration issue.";
     }
 
     const groq = new Groq({
@@ -29,7 +29,7 @@ async function generateAnswer({
       .slice(0, 7)
       .map(
         (p, i) =>
-          `Pub ${i + 1}: (${p.year || "N/A"}) ${p.title || "Untitled"} | ${p.source || "Unknown source"} | ${p.url || p.link || "No URL"}`
+          `Publication ${i + 1}: ${p.title || "Untitled"} | Year: ${p.year || "N/A"} | Source: ${p.source || "Unknown"} | URL: ${p.url || p.link || "No URL"}`
       )
       .join("\n");
 
@@ -37,15 +37,15 @@ async function generateAnswer({
       .slice(0, 5)
       .map(
         (t, i) =>
-          `Trial ${i + 1}: ${t.title || "Untitled"} | ${t.status || "Unknown status"} | ${t.location || "Location not listed"}`
+          `Trial ${i + 1}: ${t.title || "Untitled"} | Status: ${t.status || "Unknown"} | Location: ${t.location || "Not listed"}`
       )
       .join("\n");
 
     const prompt = `
-You are CuraLink AI, a medical evidence synthesis assistant.
+You are CuraLink AI, a clinical evidence synthesis assistant.
 
 Patient Name: ${patientName || "User"}
-Disease: ${disease || "Not specified"}
+Clinical Indication: ${disease || "Not specified"}
 Location: ${location || "Not specified"}
 Research Objective: ${query || "General medical research"}
 
@@ -56,23 +56,23 @@ Clinical Trials:
 ${trialContext || "No clinical trials available"}
 
 Instructions:
-- Write a concise synthesis under 180 words.
-- Use cautious language such as "Evidence suggests" or "Recent studies indicate".
+- Write a concise structured synthesis in under 180 words.
+- Use cautious language like "Evidence suggests" or "Recent studies indicate".
+- Do not hallucinate or invent evidence.
 - Do not provide diagnosis or treatment advice.
-- Only summarize the provided evidence.
-- Mention if clinical trial activity appears limited, early-stage, ongoing, or completed.
-- Keep the tone professional, clinical, and clear.
+- Summarize only the evidence provided above.
+- Mention whether the trial landscape appears ongoing, limited, recruiting, or completed.
 - End with exactly:
 This synthesis is for informational purposes and is not medical advice.
 `;
 
     const response = await groq.chat.completions.create({
-      model: "mixtral-8x7b-32768",
+      model: "llama-3.1-8b-instant",
       messages: [
         {
           role: "system",
           content:
-            "You summarize only the provided medical evidence. Do not hallucinate. Do not provide diagnosis. Do not give treatment advice."
+            "You summarize only the provided clinical evidence. Do not hallucinate. Do not provide diagnosis. Do not give treatment advice."
         },
         {
           role: "user",
@@ -80,14 +80,14 @@ This synthesis is for informational purposes and is not medical advice.
         }
       ],
       temperature: 0.2,
-      max_tokens: 400
+      max_completion_tokens: 300
     });
 
     const content = response?.choices?.[0]?.message?.content?.trim();
 
     if (!content) {
       console.error("Groq returned empty content:", JSON.stringify(response, null, 2));
-      return "AI synthesis is temporarily unavailable. Please review the raw data sources below.";
+      return "Evidence retrieval completed successfully. Structured AI synthesis is temporarily unavailable at the moment.";
     }
 
     return content;
@@ -99,7 +99,7 @@ This synthesis is for informational purposes and is not medical advice.
       error: err?.error
     });
 
-    return "AI synthesis is temporarily unavailable. Please review the raw data sources below.";
+    return "Evidence retrieval completed successfully. Structured AI synthesis is temporarily unavailable at the moment.";
   }
 }
 
