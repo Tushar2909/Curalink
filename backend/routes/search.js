@@ -13,22 +13,22 @@ router.post("/search", async (req, res) => {
     const { disease, query, patientName, location } = req.body;
 
     if (!disease || !query) {
-      return res.status(400).json({ error: "Disease and query are required." });
+      return res.status(400).json({ error: "Input required" });
     }
 
     const expandedQuery = expandQuery({ disease, query });
 
     const [openAlexRaw, pubMedRaw, trialsRaw] = await Promise.all([
       fetchOpenAlex(expandedQuery, 30).catch((err) => {
-        console.error("OpenAlex fetch failed:", err.message);
+        console.error("OpenAlex error:", err.message);
         return [];
       }),
       fetchPubMed(expandedQuery, 30).catch((err) => {
-        console.error("PubMed fetch failed:", err.message);
+        console.error("PubMed error:", err.message);
         return [];
       }),
       fetchTrials(disease).catch((err) => {
-        console.error("ClinicalTrials fetch failed:", err.message);
+        console.error("Trials error:", err.message);
         return [];
       })
     ]);
@@ -38,7 +38,6 @@ router.post("/search", async (req, res) => {
     const topTrials = (trialsRaw || []).slice(0, 5);
 
     let answer = "";
-
     try {
       answer = await Promise.race([
         generateAnswer({
@@ -50,11 +49,11 @@ router.post("/search", async (req, res) => {
           trials: topTrials
         }),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("AI timeout after 45 seconds")), 45000)
+          setTimeout(() => reject(new Error("Timeout")), 45000)
         )
       ]);
     } catch (aiErr) {
-      console.error("⚠️ AI generation failed or timed out:", aiErr.message);
+      console.error("⚠️ AI Generation Slow or Offline:", aiErr.message);
       answer = "The reasoning engine is offline. Please review the raw data sources below.";
     }
 
@@ -64,18 +63,12 @@ router.post("/search", async (req, res) => {
       trials: topTrials,
       queryInfo: {
         expandedQuery,
-        poolSize: allPubs.length,
-        openAlexCount: openAlexRaw.length,
-        pubMedCount: pubMedRaw.length,
-        trialsCount: trialsRaw.length
+        poolSize: allPubs.length
       }
     });
   } catch (err) {
-    console.error("🔥 Pipeline crash:", err);
-    return res.status(500).json({
-      error: "Internal Pipeline Error",
-      details: err.message
-    });
+    console.error("🔥 Pipeline Crash:", err);
+    return res.status(500).json({ error: "Internal Pipeline Error" });
   }
 });
 

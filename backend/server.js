@@ -29,7 +29,7 @@ app.get("/api/health", (req, res) => {
   res.json({
     ok: true,
     groqConfigured: !!process.env.GROQ_API_KEY,
-    timestamp: new Date().toISOString()
+    groqKeyPrefix: process.env.GROQ_API_KEY ? process.env.GROQ_API_KEY.slice(0, 4) : null
   });
 });
 
