@@ -19,11 +19,11 @@ router.post("/search", async (req, res) => {
     const expandedQuery = expandQuery({ disease, query });
 
     const [openAlexRaw, pubMedRaw, trialsRaw] = await Promise.all([
-      fetchOpenAlex(expandedQuery, 30).catch((err) => {
+      fetchOpenAlex(expandedQuery, 50).catch((err) => {
         console.error("OpenAlex error:", err.message);
         return [];
       }),
-      fetchPubMed(expandedQuery, 30).catch((err) => {
+      fetchPubMed(expandedQuery, 50).catch((err) => {
         console.error("PubMed error:", err.message);
         return [];
       }),
@@ -48,13 +48,12 @@ router.post("/search", async (req, res) => {
           publications: topPublications,
           trials: topTrials
         }),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Timeout")), 45000)
-        )
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 45000))
       ]);
     } catch (aiErr) {
-      console.error("⚠️ AI Generation Slow or Offline:", aiErr.message);
-      answer = "The reasoning engine is offline. Please review the raw data sources below.";
+      console.error("AI generation slow or offline:", aiErr.message);
+      answer =
+        "AI synthesis is temporarily unavailable, but the verified publications and clinical trials below are still current and usable for review.";
     }
 
     return res.json({
@@ -67,7 +66,7 @@ router.post("/search", async (req, res) => {
       }
     });
   } catch (err) {
-    console.error("🔥 Pipeline Crash:", err);
+    console.error("Pipeline Crash:", err);
     return res.status(500).json({ error: "Internal Pipeline Error" });
   }
 });
