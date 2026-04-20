@@ -15,27 +15,40 @@ router.post("/search", async (req, res) => {
 
     const expandedQuery = expandQuery({ disease, query });
 
-    // Deep Retrieval (Fetching 30 each for a total pool of 60+)
+    // 📡 Parallel Retrieval
     const [openAlexRaw, pubMedRaw, trialsRaw] = await Promise.all([
       fetchOpenAlex(expandedQuery, 30).catch(() => []),
       fetchPubMed(expandedQuery, 30).catch(() => []),
       fetchTrials(disease).catch(() => [])
     ]);
 
-    // Intelligent Ranking
+    // 🧠 Intelligent Ranking
     const allPubs = [...openAlexRaw, ...pubMedRaw];
     const topPublications = rankResults(allPubs, query, disease).slice(0, 7);
     const topTrials = trialsRaw.slice(0, 5);
 
-    // Personalized AI Generation
-    const answer = await generateAnswer({
-      patientName,
-      disease,
-      query,
-      location,
-      publications: topPublications,
-      trials: topTrials
-    });
+    // 🤖 FAULT-TOLERANT AI GENERATION
+    let answer = "";
+    try {
+      // We give the AI a 45-second "racing" limit. 
+      // If it takes longer, we move on with the raw data.
+      answer = await Promise.race([
+        generateAnswer({
+          patientName,
+          disease,
+          query,
+          location,
+          publications: topPublications,
+          trials: topTrials
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Timeout")), 45000)
+        )
+      ]);
+    } catch (aiErr) {
+      console.error("⚠️ AI Generation Slow or Offline:", aiErr.message);
+      answer = "The reasoning engine is offline. Please review the raw data sources below.";
+    }
 
     res.json({
       answer,
@@ -45,7 +58,8 @@ router.post("/search", async (req, res) => {
     });
 
   } catch (err) {
-    res.status(500).json({ error: "Pipeline failure. Check API keys and local LLM status." });
+    console.error("🔥 Pipeline Crash:", err);
+    res.status(500).json({ error: "Internal Pipeline Error" });
   }
 });
 
