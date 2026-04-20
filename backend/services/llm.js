@@ -20,12 +20,16 @@ async function generateAnswer({ patientName, disease, query, location, publicati
 
     const paperContext = safePublications
       .slice(0, 5)
-      .map((p, i) => `Pub ${i + 1}: (${p.year || "N/A"}) ${p.title || "Untitled"} | ${p.source || "Unknown source"} | ${p.url || p.link || "No URL"}`)
+      .map((p, i) =>
+        `Pub ${i + 1}: (${p.year || "N/A"}) ${p.title || "Untitled"} | ${p.source || "Unknown source"} | ${p.url || p.link || "No URL"}`
+      )
       .join("\n");
 
     const trialContext = safeTrials
       .slice(0, 3)
-      .map((t, i) => `Trial ${i + 1}: ${t.title || "Untitled"} | ${t.status || "Unknown status"} | ${t.location || "Location not listed"}`)
+      .map((t, i) =>
+        `Trial ${i + 1}: ${t.title || "Untitled"} | ${t.status || "Unknown status"} | ${t.location || "Location not listed"}`
+      )
       .join("\n");
 
     const prompt = `
@@ -51,7 +55,7 @@ This synthesis is for informational purposes and is not medical advice.
 `;
 
     const response = await groq.chat.completions.create({
-      model: "mixtral-8x7b-32768",
+      model: "llama-3.3-70b-versatile",
       messages: [
         {
           role: "system",
