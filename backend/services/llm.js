@@ -1,18 +1,23 @@
 const Groq = require("groq-sdk");
 require('dotenv').config(); 
 
-// 🚀 DIRECT INITIALIZATION - Best for Render/Vercel
-const groq = new Groq({ 
-  apiKey: process.env.GROQ_API_KEY 
-});
-
 async function generateAnswer({ patientName, disease, query, location, publications, trials }) {
   try {
-    if (!publications || publications.length === 0) {
-      return "CuraLink retrieved trials but requires more publication data for a full synthesis.";
+    // 🛡️ Safety Check: If Key is missing, don't crash, just log and return
+    if (!process.env.GROQ_API_KEY) {
+      console.error("🔥 GROQ_API_KEY is missing in Environment Variables!");
+      return "The reasoning engine is offline due to a configuration sync. Please review the raw data sources below.";
     }
 
-    // Narrowing the context to make the AI respond faster
+    const groq = new Groq({ 
+      apiKey: process.env.GROQ_API_KEY 
+    });
+
+    if (!publications || publications.length === 0) {
+      return "CuraLink retrieved clinical trials but requires more publication data for a full synthesis.";
+    }
+
+    // Narrowing the context for ultra-fast response on free tier
     const paperContext = publications.slice(0, 3).map(p => `(${p.year}) ${p.title}`).join(" | ");
     const trialContext = trials.slice(0, 2).map(t => `${t.title}`).join(" | ");
 
@@ -24,9 +29,9 @@ Papers: ${paperContext}
 Trials: ${trialContext}
 
 ### TASK:
-1. Summarize latest 2025-2026 trends for ${query}.
-2. Use "Evidence suggests". No medical advice.
-3. Keep it under 200 words.
+1. Synthesize 2025-2026 trends for ${query}.
+2. Use "Evidence suggests". NO medical advice or diagnosis.
+3. Keep it professional and under 150 words.
 4. End with: "This synthesis is for informational purposes and is not medical advice."
 `;
 
@@ -39,7 +44,6 @@ Trials: ${trialContext}
 
     return response.choices[0]?.message?.content?.trim() || "Synthesis failed.";
   } catch (err) {
-    // 💡 LOG THE EXACT ERROR TO RENDER DASHBOARD
     console.error("🔥 GROQ SYSTEM ERROR:", err.message);
     return "The reasoning engine is offline. Please review the raw data sources below.";
   }
